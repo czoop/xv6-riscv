@@ -28,6 +28,7 @@ main()
     iinit();         // inode cache
     fileinit();      // file table
     virtio_disk_init(); // emulated hard disk
+    virtio_network_init(); // emulated hard network
     userinit();      // first user process
     __sync_synchronize();
     started = 1;
@@ -41,5 +42,5 @@ main()
     plicinithart();   // ask PLIC for device interrupts
   }
 
-  scheduler();        
+  scheduler();
 }
