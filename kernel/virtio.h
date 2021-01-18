@@ -43,6 +43,15 @@
 #define VIRTIO_RING_F_INDIRECT_DESC 28
 #define VIRTIO_RING_F_EVENT_IDX     29
 
+// device feature bits
+#define VIRTIO_NET_F_RO              5	/* Disk is read-only */
+#define VIRTIO_NET_F_SCSI            7	/* Supports scsi command passthru */
+#define VIRTIO_NET_F_CONFIG_WCE     11	/* Writeback mode available in config */
+#define VIRTIO_NET_F_MQ             12	/* support more than one vq */
+#define VIRTIO_F_ANY_LAYOUT         27
+#define VIRTIO_RING_F_INDIRECT_DESC 28
+#define VIRTIO_RING_F_EVENT_IDX     29
+
 // this many virtio descriptors.
 // must be a power of two.
 #define NUM 8
@@ -92,3 +101,17 @@ struct virtio_blk_req {
   uint32 reserved;
   uint64 sector;
 };
+
+struct packet_header {
+  uint8 flags;                // Bit 0: Needs checksum; Bit 1: Received packet has valid data;
+                                // Bit 2: If VIRTIO_NET_F_RSC_EXT was negotiated, the device processes
+                                // duplicated ACK segments, reports number of coalesced TCP segments in ChecksumStart
+                                // field and number of duplicated ACK segments in ChecksumOffset field,
+                                // and sets bit 2 in Flags(VIRTIO_NET_HDR_F_RSC_INFO)
+  uint8  segmentation_offload;  // 0:None 1:TCPv4 3:UDP 4:TCPv6 0x80:ECN
+  uint16 header_length;        // Size of header to be used during segmentation.
+  uint16 segment_length;       // Maximum segment size (not including header).
+  uint16 checksum_start;       // The position to begin calculating the checksum.
+  uint16 checksum_offset;      // The position after ChecksumStart to store the checksum.
+  uint16 buffer_count;         // Used when merging buffers.
+}

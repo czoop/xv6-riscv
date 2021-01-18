@@ -96,6 +96,7 @@ void virtio_network_init(void)
   *R(VIRTIO_MMIO_STATUS) = status;
 
   // negotiate features
+  /*
   uint64 features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
   features &= ~(1 << VIRTIO_BLK_F_RO);
   features &= ~(1 << VIRTIO_BLK_F_SCSI);
@@ -105,16 +106,17 @@ void virtio_network_init(void)
   features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   *R(VIRTIO_MMIO_DRIVER_FEATURES) = features;
+  */
 
   // tell device that feature negotiation is complete.
-  status |= VIRTIO_CONFIG_S_FEATURES_OK;
-  *R(VIRTIO_MMIO_STATUS) = status;
+  /* status |= VIRTIO_CONFIG_S_FEATURES_OK; */
+  /* *R(VIRTIO_MMIO_STATUS) = status; */
 
   // tell device we're completely ready.
   status |= VIRTIO_CONFIG_S_DRIVER_OK;
   *R(VIRTIO_MMIO_STATUS) = status;
 
-  *R(VIRTIO_MMIO_GUEST_PAGE_SIZE) = PGSIZE;
+  /* *R(VIRTIO_MMIO_GUEST_PAGE_SIZE) = PGSIZE; */
 
   // initialize queue 0.
   *R(VIRTIO_MMIO_QUEUE_SEL) = 0;
