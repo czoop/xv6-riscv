@@ -119,8 +119,6 @@ void virtio_network_init(void)
 
   *R(VIRTIO_MMIO_GUEST_PAGE_SIZE) = PGSIZE;
 
-  printf("%p\n", *R(VIRTIO_MMIO_STATUS));
-
   // initialize queue 0.
   *R(VIRTIO_MMIO_QUEUE_SEL) = 0;
   uint32 rq_max = *R(VIRTIO_MMIO_QUEUE_NUM_MAX);
@@ -162,6 +160,7 @@ void virtio_network_init(void)
   }
 
   // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
+  /* virtio_network_rw(); */
 }
 
 // find a free descriptor, mark it non-free, return its index.
@@ -235,12 +234,20 @@ void virtio_network_rw(struct buf *b, int write)
 
   acquire(&network[write].vnetwork_lock);
 
+  int idx[3];
+  while(1){
+    if(alloc3_desc(idx, write) == 0) {
+      break;
+    }
+    sleep(&network[write].free[0], &network[write].vnetwork_lock);
+  }
 
   release(&network[write].vnetwork_lock);
 }
 
 void virtio_network_intr()
 {
+    printf("virtio_network_intr received\n");
   /* acquire(&network.vnetwork_lock); */
 
   /* // the device won't raise another interrupt until we tell it */

@@ -99,7 +99,6 @@ struct virtio_blk_req {
 struct virtio_net_req {
     uint32 type;
     uint32 reserved;
-
 };
 
 struct virtio_net_config {
@@ -109,7 +108,7 @@ struct virtio_net_config {
     uint16 mtu;
 };
 
-struct packet_header {
+struct virtio_net_hdr {
   uint8 flags;                // Bit 0: Needs checksum; Bit 1: Received packet has valid data;
                                 // Bit 2: If VIRTIO_NET_F_RSC_EXT was negotiated, the device processes
                                 // duplicated ACK segments, reports number of coalesced TCP segments in ChecksumStart
