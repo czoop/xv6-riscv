@@ -45,6 +45,7 @@
 
 // device feature bits
 #define VIRTIO_NET_F_STATUS         16
+#define VIRTIO_NET_F_MAC            5
 
 // this many virtio descriptors.
 // must be a power of two.

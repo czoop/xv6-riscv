@@ -75,6 +75,15 @@ static struct network
 
 } __attribute__((aligned(PGSIZE))) network[2];
 
+void read_virtio_status()
+{
+  // https://docs.oasis-open.org/virtio/virtio/v1.1/cs01/virtio-v1.1-cs01.html#x1-156001r2
+  // Interrupt Status 0x060
+  // Device Status 0x070
+
+  printf("VIRTIO INTERRUPT STATUS: %p\n", (char)*R(0x60));
+}
+
 void virtio_network_init(void)
 {
   uint32 status = 0;
@@ -99,6 +108,7 @@ void virtio_network_init(void)
 
   uint64 features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
   features &= ~(1 << VIRTIO_NET_F_STATUS);
+  features &= ~(1 << VIRTIO_NET_F_MAC);
   /* features &= ~(1 << VIRTIO_BLK_F_RO); */
   /* features &= ~(1 << VIRTIO_BLK_F_SCSI); */
   /* features &= ~(1 << VIRTIO_BLK_F_CONFIG_WCE); */
@@ -107,7 +117,6 @@ void virtio_network_init(void)
   /* features &= ~(1 << VIRTIO_RING_F_EVENT_IDX); */
   /* features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC); */
   *R(VIRTIO_MMIO_DRIVER_FEATURES) = features;
-
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
@@ -154,13 +163,27 @@ void virtio_network_init(void)
   network[1].used = (struct virtq_used *)(network[1].pages + PGSIZE);
 
   // all NUM descriptors start out unused.
-  for (int i = 0; i < NUM; i++) {
+  for (int i = 0; i < NUM; i++)
+  {
     network[0].free[i] = 1;
     network[1].free[i] = 1;
   }
 
   // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
-  /* virtio_network_rw(); */
+  printf("Finished VirtIO Init\n");
+
+  struct virtio_net_config { 
+        uint8 mac[6]; 
+        uint16 status; 
+  };
+
+  struct virtio_net_config * nc = (struct virtio_net_config*) R(0x100);
+
+  printf("%x:%x:0%x:%x:%x:%x\n", nc->mac[0], nc->mac[1], nc->mac[2], nc->mac[3], nc->mac[4], nc->mac[5]);
+
+  // struct network_buf b;
+
+  // virtio_network_rw(&b, 1);
 }
 
 // find a free descriptor, mark it non-free, return its index.
@@ -228,26 +251,33 @@ alloc3_desc(int *idx, int q)
   return 0;
 }
 
-void virtio_network_rw(struct buf *b, int write)
+void virtio_network_rw(struct network_buf *b, int write)
 {
-  uint64 sector = b->blockno * (BSIZE / 512);
+  // Assuming write == 1
+  printf("Writing packet!\n");
 
   acquire(&network[write].vnetwork_lock);
 
   int idx[3];
-  while(1){
-    if(alloc3_desc(idx, write) == 0) {
+  while (1)
+  {
+    if (alloc3_desc(idx, write) == 0)
+    {
       break;
     }
     sleep(&network[write].free[0], &network[write].vnetwork_lock);
   }
+
+  // Descriptors in idx array acquired
+  network->desc[write].addr = (uint64) &b->data;
+
 
   release(&network[write].vnetwork_lock);
 }
 
 void virtio_network_intr()
 {
-    printf("virtio_network_intr received\n");
+  printf("virtio_network_intr received\n");
   /* acquire(&network.vnetwork_lock); */
 
   /* // the device won't raise another interrupt until we tell it */
