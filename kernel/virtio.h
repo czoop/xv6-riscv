@@ -34,18 +34,25 @@
 #define VIRTIO_CONFIG_S_DRIVER_OK	4
 #define VIRTIO_CONFIG_S_FEATURES_OK	8
 
-// device feature bits
+// block device feature bits
 #define VIRTIO_BLK_F_RO              5	/* Disk is read-only */
 #define VIRTIO_BLK_F_SCSI            7	/* Supports scsi command passthru */
 #define VIRTIO_BLK_F_CONFIG_WCE     11	/* Writeback mode available in config */
 #define VIRTIO_BLK_F_MQ             12	/* support more than one vq */
+
+// network device feature bits
+#define VIRTIO_NET_F_MAC            5
+#define VIRTIO_NET_F_STATUS         16
+
+// network device header flags
+#define VIRTIO_NET_HDR_F_NEEDS_CSUM 1
+
+#define VIRTIO_NET_HDR_GSO_NONE     0
+
+// device feature bits
 #define VIRTIO_F_ANY_LAYOUT         27
 #define VIRTIO_RING_F_INDIRECT_DESC 28
 #define VIRTIO_RING_F_EVENT_IDX     29
-
-// device feature bits
-#define VIRTIO_NET_F_STATUS         16
-#define VIRTIO_NET_F_MAC            5
 
 // this many virtio descriptors.
 // must be a power of two.
@@ -97,11 +104,6 @@ struct virtio_blk_req {
   uint64 sector;
 };
 
-struct virtio_net_req {
-    uint32 type;
-    uint32 reserved;
-};
-
 struct virtio_net_config {
     uint8 mac[6];
     uint16 status;
@@ -115,10 +117,30 @@ struct virtio_net_hdr {
                                 // duplicated ACK segments, reports number of coalesced TCP segments in ChecksumStart
                                 // field and number of duplicated ACK segments in ChecksumOffset field,
                                 // and sets bit 2 in Flags(VIRTIO_NET_HDR_F_RSC_INFO)
-  uint8  segmentation_offload;  // 0:None 1:TCPv4 3:UDP 4:TCPv6 0x80:ECN
-  uint16 header_length;        // Size of header to be used during segmentation.
-  uint16 segment_length;       // Maximum segment size (not including header).
-  uint16 checksum_start;       // The position to begin calculating the checksum.
-  uint16 checksum_offset;      // The position after ChecksumStart to store the checksum.
-  uint16 buffer_count;         // Used when merging buffers.
+  uint8  gso_type;  // 0:None 1:TCPv4 3:UDP 4:TCPv6 0x80:ECN
+  uint16 hdr_length;        // Size of header to be used during segmentation.
+  uint16 gso_size;       // Maximum segment size (not including header).
+  uint16 csum_start;       // The position to begin calculating the checksum.
+  uint16 csum_offset;      // The position after ChecksumStart to store the checksum.
+  uint64 num_buffers;
+};
+
+
+struct eth_frame
+{
+    uchar pre[7];           // not needed anymore?
+    uchar sfd;              // always set to 0b10101011
+    uchar dest[6];          // 6B mac addr
+    uchar src[6];           // 6B mac addr
+    uchar len[2];           // length of the entire ethernet frame, cannot be larger than 1500
+    uchar data[1488];       // max = 1500B, min = 46B; pad w/ 0s otherwise
+    uchar crc[4];           // 32 bit hash (csum) over dest, src, len, and data
+};
+
+// have to put it here for some damn reason
+struct network_buf
+{
+    struct virtio_net_hdr hdr;
+    struct eth_frame data;
+    /* uchar data[1514]; */
 };

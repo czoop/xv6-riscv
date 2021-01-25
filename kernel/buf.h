@@ -10,8 +10,3 @@ struct buf
   struct buf *next;
   uchar data[BSIZE];
 };
-
-struct network_buf
-{
-  uchar data[BSIZE];
-};

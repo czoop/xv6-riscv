@@ -3,7 +3,8 @@
 // uses qemu's mmio interface to virtio.
 // qemu presents a "legacy" virtio interface.
 //
-// qemu ... -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+// qemu ... -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.1
+//
 //
 
 #include "types.h"
@@ -81,7 +82,7 @@ void read_virtio_status()
   // Interrupt Status 0x060
   // Device Status 0x070
 
-  printf("VIRTIO INTERRUPT STATUS: %p\n", (char)*R(0x60));
+  printf("VIRTIO INTERRUPT STATUS: %p\n", (char)*R(VIRTIO_MMIO_INTERRUPT_STATUS));
 }
 
 void virtio_network_init(void)
@@ -107,15 +108,11 @@ void virtio_network_init(void)
   // negotiate features
 
   uint64 features = *R(VIRTIO_MMIO_DEVICE_FEATURES);
-  features &= ~(1 << VIRTIO_NET_F_STATUS);
   features &= ~(1 << VIRTIO_NET_F_MAC);
-  /* features &= ~(1 << VIRTIO_BLK_F_RO); */
-  /* features &= ~(1 << VIRTIO_BLK_F_SCSI); */
-  /* features &= ~(1 << VIRTIO_BLK_F_CONFIG_WCE); */
-  /* features &= ~(1 << VIRTIO_BLK_F_MQ); */
-  /* features &= ~(1 << VIRTIO_F_ANY_LAYOUT); */
-  /* features &= ~(1 << VIRTIO_RING_F_EVENT_IDX); */
-  /* features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC); */
+  features &= ~(1 << VIRTIO_NET_F_STATUS);
+  features &= ~(1 << VIRTIO_F_ANY_LAYOUT);
+  features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
+  features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   *R(VIRTIO_MMIO_DRIVER_FEATURES) = features;
 
   // tell device that feature negotiation is complete.
@@ -172,28 +169,28 @@ void virtio_network_init(void)
   // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
   printf("Finished VirtIO Init\n");
 
-  struct virtio_net_config { 
-        uint8 mac[6]; 
-        uint16 status; 
-  };
-
   struct virtio_net_config * nc = (struct virtio_net_config*) R(0x100);
+  struct network_buf nb;
+  nb.hdr.flags = 0;
+  nb.hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
+  nb.hdr.hdr_length = sizeof(struct virtio_net_hdr);
+  nb.hdr.gso_size = 1514;
+  nb.hdr.csum_start = 8;
+  nb.hdr.csum_offset = 1510;
+
 
   printf("%x:%x:0%x:%x:%x:%x\n", nc->mac[0], nc->mac[1], nc->mac[2], nc->mac[3], nc->mac[4], nc->mac[5]);
 
-  // struct network_buf b;
 
-  // virtio_network_rw(&b, 1);
+  virtio_network_rw(&nb, 0);
 }
 
 // find a free descriptor, mark it non-free, return its index.
 static int
 alloc_desc(int q)
 {
-  for (int i = 0; i < NUM; i++)
-  {
-    if (network[q].free[i])
-    {
+  for (int i = 0; i < NUM; i++) {
+    if (network[q].free[i]) {
       network[q].free[i] = 0;
       return i;
     }
@@ -259,17 +256,15 @@ void virtio_network_rw(struct network_buf *b, int write)
   acquire(&network[write].vnetwork_lock);
 
   int idx[3];
-  while (1)
-  {
-    if (alloc3_desc(idx, write) == 0)
-    {
+  while (1) {
+    if (alloc3_desc(idx, write) == 0) {
       break;
     }
     sleep(&network[write].free[0], &network[write].vnetwork_lock);
   }
 
   // Descriptors in idx array acquired
-  network->desc[write].addr = (uint64) &b->data;
+  network[write].desc->addr = (uint64) &b;
 
 
   release(&network[write].vnetwork_lock);
