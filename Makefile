@@ -59,7 +59,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
 # CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -g3
-CFLAGS = -Werror -O -fno-omit-frame-pointer -ggdb -g3
+CFLAGS = -Werror -O0 -fno-omit-frame-pointer -ggdb -g3
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
@@ -163,7 +163,7 @@ QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nogr
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS += -device virtio-net-device,netdev=net0,bus=virtio-mmio-bus.1
-QEMUOPTS += -netdev user,id=net0
+QEMUOPTS += -netdev tap,id=net0,ifname=xv6,script=no,downscript=no
 QEMUOPTS += -object filter-dump,id=f1,netdev=net0,file=dump.dat
 
 qemu: $K/kernel fs.img

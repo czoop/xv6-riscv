@@ -21,7 +21,7 @@
 // the address of virtio mmio register r.
 #define R(r) ((volatile uint32 *)(VIRTIO1 + (r)))
 
-static struct network
+struct network
 {
   // the virtio driver and device mostly communicate through a set of
   // structures in RAM. pages[] allocates that memory. pages[] is a
@@ -169,20 +169,41 @@ void virtio_network_init(void)
   // plic.c and trap.c arrange for interrupts from VIRTIO0_IRQ.
   printf("Finished VirtIO Init\n");
 
-  struct virtio_net_config * nc = (struct virtio_net_config*) R(0x100);
-  struct network_buf nb;
-  nb.hdr.flags = 0;
-  nb.hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE;
-  nb.hdr.hdr_length = sizeof(struct virtio_net_hdr);
-  nb.hdr.gso_size = 1514;
-  nb.hdr.csum_start = 8;
-  nb.hdr.csum_offset = 1510;
+  /* struct virtio_net_config * nc = (struct virtio_net_config*) R(0x100); */
+  /* static struct network_buf nb; */
+  /* nb.hdr.num_buffers = 0; */
+  /* nb.hdr.flags = 0; */
+  /* nb.hdr.gso_type = VIRTIO_NET_HDR_GSO_NONE; */
+  /* nb.hdr.hdr_length = sizeof(struct virtio_net_hdr); */
+  /* nb.hdr.gso_size = 1514; */
+  /* nb.hdr.csum_start = 8; */
+  /* nb.hdr.csum_offset = 1510; */
 
 
-  printf("%x:%x:0%x:%x:%x:%x\n", nc->mac[0], nc->mac[1], nc->mac[2], nc->mac[3], nc->mac[4], nc->mac[5]);
+  /* printf("%x:%x:0%x:%x:%x:%x\n", nc->mac[0], nc->mac[1], nc->mac[2], nc->mac[3], nc->mac[4], nc->mac[5]); */
+
+  static struct eth_frame packet;
+
+  static struct virtio_net_hdr hdr;
+  hdr.num_buffers = 0;
+
+  network[0].desc[0].addr = (uint64) &hdr;
+  network[0].desc[0].flags |= VRING_DESC_F_WRITE | VRING_DESC_F_NEXT;
+  network[0].desc[0].len = sizeof(struct virtio_net_hdr);
+  network[0].desc[0].next = 1;
+
+  network[0].desc[1].addr = (uint64) &packet;
+  network[0].desc[1].flags = VRING_DESC_F_WRITE;
+  network[0].desc[1].len = sizeof(struct eth_frame);
+  network[0].desc[1].next = 0;
+
+  network[0].avail->ring[network[0].avail->idx % NUM] = 0;
+  __sync_synchronize();
+  network[0].avail->idx += 1;
 
 
-  virtio_network_rw(&nb, 0);
+  /* for (;;); */
+  /* virtio_network_rw(&nb, 0); */
 }
 
 // find a free descriptor, mark it non-free, return its index.

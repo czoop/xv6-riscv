@@ -122,7 +122,7 @@ struct virtio_net_hdr {
   uint16 gso_size;       // Maximum segment size (not including header).
   uint16 csum_start;       // The position to begin calculating the checksum.
   uint16 csum_offset;      // The position after ChecksumStart to store the checksum.
-  uint64 num_buffers;
+  uint16 num_buffers;
 };
 
 
